@@ -1,18 +1,42 @@
-import pygame
+import pygame as pg
+
+
+class Game:
+    def __init__(self):
+        pg.init()
+        pg.display.set_caption('Жёлтый круг')
+        self.size = self.width, self.height = 800, 600
+        self.screen = pg.display.set_mode(self.size)
+        self.screen.fill('blue')
+        self.display = pg.display
+        self.v = 1
+        self.x = 1
+        self.fps = 100
+        self.clock = pg.time.Clock()
+        self.draw_circle = False
+        self.run()
+        pg.quit()
+
+    def run(self):
+        running = True
+        while running:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    running = False
+                if event.type == pg.MOUSEBUTTONUP:
+                    self.screen.fill('blue')
+                    self.draw_circle = True
+                    self.x_pos = event.pos
+                    self.x = 1
+            self.draw()
+            self.clock.tick(self.fps)
+            self.display.flip()
+
+    def draw(self):
+        if self.draw_circle:
+            self.x += self.v
+            pg.draw.circle(self.screen, 'yellow', self.x_pos, self.x)
 
 
 if __name__ == '__main__':
-    pygame.init()
-    n, k = list(map(lambda x: int(x), input().split(' ')))
-    w = n * k * 2
-    screen = pygame.display.set_mode((w, w))
-    screen.fill('black')
-    colors = ['red', 'green', 'blue']
-    for i in range(1, k + 1):
-        pygame.draw.circle(screen, colors[0], (w / 2, w / 2), n * i + 1, n + 1)
-        c = colors.pop(0)
-        colors.append(c)
-    pygame.display.flip()
-    while pygame.event.wait().type != pygame.QUIT:
-        pass
-    pygame.quit()
+    game = Game()
