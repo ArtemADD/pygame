@@ -9,16 +9,17 @@ RIGHT_UP = 4
 class Game:
     def __init__(self):
         pg.init()
-        pg.display.set_caption('Шарики')
-        self.size = self.width, self.height = 400, 200
+        pg.display.set_caption('Перетаскивание')
+        self.size = self.width, self.height = 300, 300
         self.screen = pg.display.set_mode(self.size)
-        self.screen.fill('blue')
+        self.screen.fill('black')
         self.display = pg.display
         self.v = 5
         self.balls = []
         self.fps = 30
         self.clock = pg.time.Clock()
-        self.draw_balls = False
+        self.rect = Rect(self.screen)
+        self.grap = False
         self.run()
         pg.quit()
 
@@ -28,79 +29,42 @@ class Game:
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     running = False
-                if event.type == pg.MOUSEBUTTONUP:
+                if event.type == pg.MOUSEBUTTONDOWN:
                     if event.button == pg.BUTTON_LEFT:
-                        self.draw_balls = True
-                        self.balls.append(Ball(event.pos, self.v, self.screen))
+                        if (event.pos[0] in range(self.rect.x, self.rect.x + self.rect.w)
+                                and event.pos[1] in range(self.rect.y, self.rect.y + self.rect.w)):
+                            self.rect.pos_grap = event.pos
+                            self.grap = True
+                if event.type == pg.MOUSEBUTTONUP:
+                    self.rect.x, self.rect.y = self.rect.pos
+                    self.grap = False
+                if event.type == pg.MOUSEMOTION and self.grap:
+                    self.rect.move(event.pos)
             self.screen.fill('black')
             self.draw()
             self.clock.tick(self.fps)
             self.display.flip()
 
     def draw(self):
-        if self.draw_balls:
-            for ball in self.balls:
-                ball.move()
-                ball.draw()
+        self.rect.draw()
 
 
-class Ball:
-    def __init__(self, pos, v, screen, m=LEFT_UP):
-        self.r = 10
+class Rect:
+    def __init__(self, screen):
         self.screen = screen
-        self.pos = list(pos)
-        self.x, self.y = pos
-        self.v = v
-        self.color = 'white'
-        self.moving = m
+        self.pos = 100, 100
+        self.x, self.y = self.pos
+        self.w = 100
+        self.pos_grap = [0, 0]
 
-    def move(self):
-        if self.moving == LEFT_UP:
-            self.x -= self.v
-            self.y -= self.v
-        if self.moving == LEFT_DOWN:
-            self.x -= self.v
-            self.y += self.v
-        if self.moving == RIGHT_UP:
-            self.x += self.v
-            self.y -= self.v
-        if self.moving == RIGHT_DOWN:
-            self.x += self.v
-            self.y += self.v
-        self.ball_touch_wall()
-
-    def ball_touch_wall(self):
-        r = self.r
-        h = self.screen.get_height()
-        w = self.screen.get_width()
-        if self.x - r < 0 and self.moving == LEFT_UP:
-            self.moving = RIGHT_UP
-            self.x = r
-        elif self.y - r < 0 and self.moving == LEFT_UP:
-            self.moving = LEFT_DOWN
-            self.y = r
-        elif self.x - r < 0 and self.moving == LEFT_DOWN:
-            self.moving = RIGHT_DOWN
-            self.x = r
-        elif self.y + r > h and self.moving == LEFT_DOWN:
-            self.moving = LEFT_UP
-            self.y = h - r
-        elif self.x + r > w and self.moving == RIGHT_UP:
-            self.moving = LEFT_UP
-            self.x = w - r
-        elif self.y - r < 0 and self.moving == RIGHT_UP:
-            self.moving = RIGHT_DOWN
-            self.y = r
-        elif self.x + r > w and self.moving == RIGHT_DOWN:
-            self.moving = LEFT_DOWN
-            self.x = w - r
-        elif self.y + r > h and self.moving == RIGHT_DOWN:
-            self.moving = RIGHT_UP
-            self.y = h - r
-        self.pos = [self.x, self.y]
+    def move(self, pos):
+        x, y = pos
+        x -= self.pos_grap[0]
+        y -= self.pos_grap[1]
+        self.pos = [self.x + x, self.y + y]
 
     def draw(self):
-        pg.draw.circle(self.screen, self.color, self.pos, self.r)
+        pg.draw.rect(self.screen, 'green', (*self.pos, self.w, self.w), border_radius=15)
 
 
 if __name__ == '__main__':
