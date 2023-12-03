@@ -1,25 +1,24 @@
 import pygame as pg
 
-LEFT_UP = 1
-LEFT_DOWN = 2
-RIGHT_DOWN = 3
-RIGHT_UP = 4
+RIGHT_UP = 1
+LEFT_UP = 2
+LEFT_DOWN = 3
+RIGHT_DOWN = 4
+LINE = 5
 
 
 class Game:
     def __init__(self):
         pg.init()
-        pg.display.set_caption('Пра-пра-пра-крестики-нолики')
+        pg.display.set_caption('К щелчку')
         self.size = self.width, self.height = 501, 501
         self.screen = pg.display.set_mode(self.size)
         self.screen.fill('black')
         self.display = pg.display
         self.v = 5
-        self.board = Board(5, 7)
-        self.board.set_view(100, 100, 50)
+        self.circle = Circle(20, (self.width // 2, self.height // 2), self.v)
         self.fps = 30
         self.clock = pg.time.Clock()
-        self.draw_balls = False
         self.run()
         pg.quit()
 
@@ -30,75 +29,92 @@ class Game:
                 if event.type == pg.QUIT:
                     running = False
                 if event.type == pg.MOUSEBUTTONDOWN:
-                    self.board.get_click(event.pos)
+                    self.circle.go_to(event.pos)
             self.screen.fill('black')
-            self.board.render(self.screen)
+            self.draw()
             self.clock.tick(self.fps)
             self.display.flip()
 
+    def draw(self):
+        self.circle.draw(self.screen)
 
-class Board:
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self.board = [[0] * width for _ in range(height)]
-        self.left = 10
-        self.top = 10
-        self.cell_size = 30
-        self.hod = 0
 
-    def set_view(self, left, top, cell_size):
-        self.left = left
-        self.top = top
-        self.cell_size = cell_size
+class Circle:
+    def __init__(self, r, pos, v):
+        self.r = r
+        self.pos = pos
+        self.v = v
+        self.x, self.y = pos
+        self.to_pos = 0, 0
+        self.go = False
 
-    def render(self, screen):
-        for i in range(self.width):
-            for j in range(self.height):
-                if self.board[j][i] == 0:
-                    pg.draw.rect(screen, 'black', (self.left + (self.cell_size * i), self.top + (self.cell_size * j),
-                                                   self.cell_size, self.cell_size))
-                elif self.board[j][i] == 1:
-                    pg.draw.line(screen, 'red', (self.left + (self.cell_size * i) + 2,
-                                 self.top + (self.cell_size * j) + 2),
-                                 (self.left + (self.cell_size * (i + 1)) - 4,
-                                 self.top + (self.cell_size * (j + 1)) - 4), 1)
-                    pg.draw.line(screen, 'red', (self.left + (self.cell_size * (i + 1)) - 4,
-                                 self.top + (self.cell_size * j) + 2),
-                                 (self.left + (self.cell_size * i) + 2,
-                                 self.top + (self.cell_size * (j + 1)) - 4), 1)
-                elif self.board[j][i] == 2:
-                    pg.draw.ellipse(screen, 'blue', (self.left + (self.cell_size * i) + 2,
-                                    self.top + (self.cell_size * j) + 2,
-                                    self.cell_size - 4, self.cell_size - 4), 1)
-                pg.draw.rect(screen, 'white', (self.left + (self.cell_size * i), self.top + (self.cell_size * j),
-                             self.cell_size, self.cell_size), 1)
+    def go_to(self, pos):
+        self.to_pos = pos
+        self.go = True
 
-    def get_cell(self, mouse_pos):
-        for i in range(self.width):
-            for j in range(self.height):
-                if (mouse_pos[0] in range(self.left + i * self.cell_size,
-                                          self.left + (i + 1) * self.cell_size)
-                        and mouse_pos[1] in range(self.top + j * self.cell_size,
-                                                  self.top + (j + 1) * self.cell_size)):
-                    return i, j
-        return None
+    def draw(self, screen):
+        self.movement()
+        pg.draw.circle(screen, 'red', self.pos, self.r)
 
-    def on_click(self, cell_coords):
-        x = cell_coords[0]
-        y = cell_coords[1]
-        if self.board[y][x] != 0:
-            pass
-        elif self.hod == 0:
-            self.hod = 1
-            self.board[y][x] = 1
-        elif self.hod == 1:
-            self.hod = 0
-            self.board[y][x] = 2
+    def movement(self):
+        if self.go:
+            m = self.define_move()
+            if m is True:
+                self.go = False
+                return
+            if m[0] == RIGHT_UP:
+                self.x += self.v
+                self.y -= self.v
+            if m[0] == LEFT_UP:
+                self.x -= self.v
+                self.y -= self.v
+            if m[0] == LEFT_DOWN:
+                self.x -= self.v
+                self.y += self.v
+            if m[0] == RIGHT_DOWN:
+                self.x += self.v
+                self.y += self.v
+            if m[0] == 5:
+                if m[1] == 1:
+                    self.x += self.v
+                if m[1] == 2:
+                    self.y -= self.v
+                if m[1] == 3:
+                    self.x -= self.v
+                if m[1] == 4:
+                    self.y += self.v
+            self.x = self.speed_corrected(self.x, self.to_pos[0])
+            self.y = self.speed_corrected(self.y, self.to_pos[1])
+            self.pos = self.x, self.y
 
-    def get_click(self, mouse_pos):
-        cell = self.get_cell(mouse_pos)
-        self.on_click(cell)
+    def define_move(self):
+        to_x = self.to_pos[0]
+        to_y = self.to_pos[1]
+        x = self.x
+        y = self.y
+        if self.pos == self.to_pos:
+            return True
+        if to_x > x and to_y < y:
+            return RIGHT_UP, 0
+        if to_x < x and to_y < y:
+            return LEFT_UP, 0
+        if to_x < x and to_y > y:
+            return LEFT_DOWN, 0
+        if to_x > x and to_y > y:
+            return RIGHT_DOWN, 0
+        if to_x - x > 0 and y == to_y:
+            return LINE, 1
+        elif to_y - y < 0 and x == to_x:
+            return LINE, 2
+        elif to_x - x < 0 and y == to_y:
+            return LINE, 3
+        elif to_y - y > 0 and x == to_x:
+            return LINE, 4
+
+    def speed_corrected(self, n, to):
+        if self.v > abs(n - to):
+            return to
+        return n
 
 
 if __name__ == '__main__':
