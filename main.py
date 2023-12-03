@@ -9,16 +9,18 @@ LINE = 5
 
 class Game:
     def __init__(self):
+        n = input()
+        if ',' in n:
+            print('Неправильный формат ввода')
+            return
+        self.n = int(n)
         pg.init()
-        pg.display.set_caption('К щелчку')
-        self.size = self.width, self.height = 501, 501
+        pg.display.set_caption('Сфера')
+        self.size = self.width, self.height = 300, 300
         self.screen = pg.display.set_mode(self.size)
         self.screen.fill('black')
         self.display = pg.display
-        self.v = 5
-        self.circle = Circle(20, (self.width // 2, self.height // 2), self.v)
-        self.fps = 30
-        self.clock = pg.time.Clock()
+        self.circle = Circle(self)
         self.run()
         pg.quit()
 
@@ -28,11 +30,8 @@ class Game:
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     running = False
-                if event.type == pg.MOUSEBUTTONDOWN:
-                    self.circle.go_to(event.pos)
             self.screen.fill('black')
             self.draw()
-            self.clock.tick(self.fps)
             self.display.flip()
 
     def draw(self):
@@ -40,81 +39,19 @@ class Game:
 
 
 class Circle:
-    def __init__(self, r, pos, v):
-        self.r = r
-        self.pos = pos
-        self.v = v
-        self.x, self.y = pos
-        self.to_pos = 0, 0
-        self.go = False
-
-    def go_to(self, pos):
-        self.to_pos = pos
-        self.go = True
+    def __init__(self, game):
+        self.n = game.n
+        self.width = game.width
+        self.height = game.height
+        self.half_width = game.width // 2
+        self.half_height = game.height // 2
 
     def draw(self, screen):
-        self.movement()
-        pg.draw.circle(screen, 'red', self.pos, self.r)
-
-    def movement(self):
-        if self.go:
-            m = self.define_move()
-            if m is True:
-                self.go = False
-                return
-            if m[0] == RIGHT_UP:
-                self.x += self.v
-                self.y -= self.v
-            if m[0] == LEFT_UP:
-                self.x -= self.v
-                self.y -= self.v
-            if m[0] == LEFT_DOWN:
-                self.x -= self.v
-                self.y += self.v
-            if m[0] == RIGHT_DOWN:
-                self.x += self.v
-                self.y += self.v
-            if m[0] == 5:
-                if m[1] == 1:
-                    self.x += self.v
-                if m[1] == 2:
-                    self.y -= self.v
-                if m[1] == 3:
-                    self.x -= self.v
-                if m[1] == 4:
-                    self.y += self.v
-            self.x = self.speed_corrected(self.x, self.to_pos[0])
-            self.y = self.speed_corrected(self.y, self.to_pos[1])
-            self.pos = self.x, self.y
-
-    def define_move(self):
-        to_x = self.to_pos[0]
-        to_y = self.to_pos[1]
-        x = self.x
-        y = self.y
-        if self.pos == self.to_pos:
-            return True
-        if to_x > x and to_y < y:
-            return RIGHT_UP, 0
-        if to_x < x and to_y < y:
-            return LEFT_UP, 0
-        if to_x < x and to_y > y:
-            return LEFT_DOWN, 0
-        if to_x > x and to_y > y:
-            return RIGHT_DOWN, 0
-        if to_x - x > 0 and y == to_y:
-            return LINE, 1
-        elif to_y - y < 0 and x == to_x:
-            return LINE, 2
-        elif to_x - x < 0 and y == to_y:
-            return LINE, 3
-        elif to_y - y > 0 and x == to_x:
-            return LINE, 4
-
-    def speed_corrected(self, n, to):
-        if self.v > abs(n - to):
-            return to
-        return n
+        q = self.width // self.n
+        for i in range(1, self.n + 1):
+            pg.draw.ellipse(screen, 'white', (0, self.half_height - (q * i // 2), self.width, q * i), 1)
+        for i in range(1, self.n + 1):
+            pg.draw.ellipse(screen, 'white', (self.half_width - (q * i // 2), 0, q * i, self.height), 1)
 
 
 if __name__ == '__main__':
