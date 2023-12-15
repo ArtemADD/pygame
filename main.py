@@ -15,12 +15,15 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
+MAP = load_level('map_1.txt')
+
+
 class Game:
     def __init__(self):
-        pg.init()
-        pg.display.set_caption('Перемещение героя')
         self.map = Map(self)
-        self.size = self.width, self.height = self.map.size[0] * 50 , self.map.size[1] * 50
+        pg.init()
+        pg.display.set_caption('Перемещение героя. Дополнительные уровни')
+        self.size = self.width, self.height = self.map.size[0] * 50, self.map.size[1] * 50
         self.screen = pg.display.set_mode(self.size)
         self.display = pg.display
         self.screen.fill('black')
@@ -31,6 +34,11 @@ class Game:
         self.player = Player(self, self.sprites)
         self.ss = StartScreen(self)
         self.start = True
+        if self.player.x is None:
+            print('Введите позицию игрока')
+            x = int(input('Введите x \n'))
+            y = int(input('Введите y \n'))
+            self.player.set_pos(x, y)
         self.run()
         pg.quit()
 
@@ -38,7 +46,7 @@ class Game:
         running = True
         while running:
             for event in pg.event.get():
-                if event.type == pg.QUIT:
+                if event.type == pg.QUIT or event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                     running = False
                 if event.type == pg.KEYDOWN:
                     if self.start is False:
@@ -59,16 +67,14 @@ class Game:
 class Map:
     def __init__(self, game):
         self.game = game
-        self.minimap = load_level('map.txt')
+        self.minimap = MAP
         self.grass_image = pg.image.load('data//grass.png')
         self.box_image = pg.image.load('data//box.png')
-        self.size = len(self.minimap), len(self.minimap[0])
+        self.size = len(self.minimap[0]), len(self.minimap)
 
     def draw(self):
         for j in range(len(self.minimap)):
             for i in range(len(self.minimap[j])):
-                if self.minimap[j][i] == '@':
-                    self.game.player.set_pos(i, j)
                 if self.minimap[j][i] != '#':
                     self.game.screen.blit(self.grass_image, (i * 50, j * 50))
                 else:
@@ -84,6 +90,13 @@ class Player(pg.sprite.Sprite):
         self.image = Player.image
         self.rect = self.image.get_rect()
         self.x, self.y = None, None
+        for j, row in enumerate(self.game.map.minimap):
+            if '@' in row:
+                self.x = row.index('@')
+                self.y = j
+                self.rect.x = self.x * 50
+                self.rect.y = self.y * 50
+                break
 
     def move(self):
         keys = pg.key.get_pressed()
@@ -97,13 +110,13 @@ class Player(pg.sprite.Sprite):
             y += 1
         elif keys[pg.K_d]:
             x += 1
-        if (0 <= x < len(self.game.map.minimap) and 0 <= y < len(self.game.map.minimap)
+        if (0 <= x < len(self.game.map.minimap[0]) and 0 <= y < len(self.game.map.minimap)
                 and self.game.map.minimap[y][x] != '#'):
             self.x = x
             self.y = y
             self.rect.x = self.x * 50
             self.rect.y = self.y * 50
-        print(x, y)
+        # print(x, y)
 
     def set_pos(self, x, y):
         if self.x is None and self.y is None:
@@ -123,5 +136,10 @@ class StartScreen(pg.sprite.Sprite):
 
 
 if __name__ == '__main__':
-    game = Game()
+    while True:
+        command = input()
+        if command == 'q':
+            break
+        MAP = load_level(command)
+        game = Game()
     sys.exit()
