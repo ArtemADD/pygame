@@ -1,22 +1,36 @@
 import sys
-
 import pygame as pg
-from random import randint
+
+
+def load_level(filename):
+    filename = "data/" + filename
+    # читаем уровень, убирая символы перевода строки
+    with open(filename, 'r') as mapFile:
+        level_map = [line.strip() for line in mapFile]
+
+    # и подсчитываем максимальную длину
+    max_width = max(map(len, level_map))
+
+    # дополняем каждую строку пустыми клетками ('.')
+    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
 class Game:
     def __init__(self):
         pg.init()
         pg.display.set_caption('Перемещение героя')
-        self.size = self.width, self.height = 800, 800
+        self.map = Map(self)
+        self.size = self.width, self.height = self.map.size[0] * 50 , self.map.size[1] * 50
         self.screen = pg.display.set_mode(self.size)
         self.display = pg.display
         self.screen.fill('black')
         self.fps = 100
         self.clock = pg.time.Clock()
-        self.map = Map(self)
         self.sprites = pg.sprite.Group()
+        self.start_screen = pg.sprite.Group()
         self.player = Player(self, self.sprites)
+        self.ss = StartScreen(self)
+        self.start = True
         self.run()
         pg.quit()
 
@@ -27,10 +41,17 @@ class Game:
                 if event.type == pg.QUIT:
                     running = False
                 if event.type == pg.KEYDOWN:
-                    self.player.move()
+                    if self.start is False:
+                        self.player.move()
+                    if self.start:
+                        self.start = False
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    self.start = False
             self.screen.fill('black')
             self.map.draw()
             self.sprites.draw(self.screen)
+            if self.start:
+                self.start_screen.draw(self.screen)
             self.clock.tick(self.fps)
             self.display.flip()
 
@@ -38,14 +59,17 @@ class Game:
 class Map:
     def __init__(self, game):
         self.game = game
-        self.minimap = [[randint(0, 2) for m in range(game.width // 50)] for _ in range(game.height // 50)]
+        self.minimap = load_level('map.txt')
         self.grass_image = pg.image.load('data//grass.png')
         self.box_image = pg.image.load('data//box.png')
+        self.size = len(self.minimap), len(self.minimap[0])
 
     def draw(self):
         for j in range(len(self.minimap)):
             for i in range(len(self.minimap[j])):
-                if self.minimap[j][i] % 2 == 0:
+                if self.minimap[j][i] == '@':
+                    self.game.player.set_pos(i, j)
+                if self.minimap[j][i] != '#':
                     self.game.screen.blit(self.grass_image, (i * 50, j * 50))
                 else:
                     self.game.screen.blit(self.box_image, (i * 50, j * 50))
@@ -59,13 +83,7 @@ class Player(pg.sprite.Sprite):
         self.game = game
         self.image = Player.image
         self.rect = self.image.get_rect()
-        self.x = randint(0, (game.width // 50) - 1)
-        self.y = randint(0, (game.height // 50) - 1)
-        while self.game.map.minimap[self.y][self.x] == 1:
-            self.x = randint(0, (game.width // 50) - 1)
-            self.y = randint(0, (game.height // 50) - 1)
-        self.rect.x = self.x * 50
-        self.rect.y = self.y * 50
+        self.x, self.y = None, None
 
     def move(self):
         keys = pg.key.get_pressed()
@@ -80,12 +98,28 @@ class Player(pg.sprite.Sprite):
         elif keys[pg.K_d]:
             x += 1
         if (0 <= x < len(self.game.map.minimap) and 0 <= y < len(self.game.map.minimap)
-                and self.game.map.minimap[y][x] != 1):
-            print(x, y)
+                and self.game.map.minimap[y][x] != '#'):
             self.x = x
             self.y = y
             self.rect.x = self.x * 50
             self.rect.y = self.y * 50
+        print(x, y)
+
+    def set_pos(self, x, y):
+        if self.x is None and self.y is None:
+            self.x = x
+            self.y = y
+            self.rect.x = x * 50
+            self.rect.y = y * 50
+
+
+class StartScreen(pg.sprite.Sprite):
+    img = pg.image.load('data//fon.jpg')
+
+    def __init__(self, game):
+        super().__init__(game.start_screen)
+        self.image = pg.transform.scale(StartScreen.img, game.size)
+        self.rect = self.image.get_rect()
 
 
 if __name__ == '__main__':
