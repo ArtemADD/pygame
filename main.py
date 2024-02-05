@@ -2,43 +2,26 @@ import sys
 import pygame as pg
 
 
-def load_level(filename):
-    filename = "data/" + filename
-    # читаем уровень, убирая символы перевода строки
-    with open(filename, 'r') as mapFile:
-        level_map = [line.strip() for line in mapFile]
-
-    # и подсчитываем максимальную длину
-    max_width = max(map(len, level_map))
-
-    # дополняем каждую строку пустыми клетками ('.')
-    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
-
-
-MAP = load_level('map_1.txt')
+def read_points_from_file(file_path):
+    with open(file_path, 'r') as file:
+        points_str = file.read()
+    points_str = points_str.replace('(', '').replace(')', '')
+    points = [tuple(map(lambda x: float(x.replace(',', '.')), point.split(';'))) for point in points_str.split(', ')]
+    return points
 
 
 class Game:
     def __init__(self):
-        self.map = Map(self)
         pg.init()
-        pg.display.set_caption('Перемещение героя. Дополнительные уровни')
-        self.size = self.width, self.height = self.map.size[0] * 50, self.map.size[1] * 50
+        pg.display.set_caption('Zoom')
+        self.size = self.width, self.height = 501, 501
         self.screen = pg.display.set_mode(self.size)
         self.display = pg.display
         self.screen.fill('black')
         self.fps = 100
         self.clock = pg.time.Clock()
-        self.sprites = pg.sprite.Group()
-        self.start_screen = pg.sprite.Group()
-        self.player = Player(self, self.sprites)
-        self.ss = StartScreen(self)
-        self.start = True
-        if self.player.x is None:
-            print('Введите позицию игрока')
-            x = int(input('Введите x \n'))
-            y = int(input('Введите y \n'))
-            self.player.set_pos(x, y)
+        self.points = read_points_from_file('points.txt')
+        self.scale = 20
         self.run()
         pg.quit()
 
@@ -48,98 +31,21 @@ class Game:
             for event in pg.event.get():
                 if event.type == pg.QUIT or event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                     running = False
-                if event.type == pg.KEYDOWN:
-                    if self.start is False:
-                        self.player.move()
-                    if self.start:
-                        self.start = False
                 if event.type == pg.MOUSEBUTTONDOWN:
-                    self.start = False
+                    if event.button == 4:  # Колесо вверх
+                        self.scale *= 1.1
+                    elif event.button == 5:  # Колесо вниз
+                        self.scale /= 1.1
             self.screen.fill('black')
-            self.map.draw()
-            self.sprites.draw(self.screen)
-            if self.start:
-                self.start_screen.draw(self.screen)
+            self.draw_polygon([(int(x * self.scale) + self.width // 2, int(-y * self.scale) + self.height // 2)
+                               for x, y in self.points])
             self.clock.tick(self.fps)
             self.display.flip()
 
-
-class Map:
-    def __init__(self, game):
-        self.game = game
-        self.minimap = MAP
-        self.grass_image = pg.image.load('data//grass.png')
-        self.box_image = pg.image.load('data//box.png')
-        self.size = len(self.minimap[0]), len(self.minimap)
-
-    def draw(self):
-        for j in range(len(self.minimap)):
-            for i in range(len(self.minimap[j])):
-                if self.minimap[j][i] != '#':
-                    self.game.screen.blit(self.grass_image, (i * 50, j * 50))
-                else:
-                    self.game.screen.blit(self.box_image, (i * 50, j * 50))
-
-
-class Player(pg.sprite.Sprite):
-    image = pg.transform.scale(pg.image.load('data//mar.png'), (50, 50))
-
-    def __init__(self, game, *group):
-        super().__init__(*group)
-        self.game = game
-        self.image = Player.image
-        self.rect = self.image.get_rect()
-        self.x, self.y = None, None
-        for j, row in enumerate(self.game.map.minimap):
-            if '@' in row:
-                self.x = row.index('@')
-                self.y = j
-                self.rect.x = self.x * 50
-                self.rect.y = self.y * 50
-                break
-
-    def move(self):
-        keys = pg.key.get_pressed()
-        x = self.x
-        y = self.y
-        if keys[pg.K_w]:
-            y -= 1
-        elif keys[pg.K_a]:
-            x -= 1
-        elif keys[pg.K_s]:
-            y += 1
-        elif keys[pg.K_d]:
-            x += 1
-        if (0 <= x < len(self.game.map.minimap[0]) and 0 <= y < len(self.game.map.minimap)
-                and self.game.map.minimap[y][x] != '#'):
-            self.x = x
-            self.y = y
-            self.rect.x = self.x * 50
-            self.rect.y = self.y * 50
-        # print(x, y)
-
-    def set_pos(self, x, y):
-        if self.x is None and self.y is None:
-            self.x = x
-            self.y = y
-            self.rect.x = x * 50
-            self.rect.y = y * 50
-
-
-class StartScreen(pg.sprite.Sprite):
-    img = pg.image.load('data//fon.jpg')
-
-    def __init__(self, game):
-        super().__init__(game.start_screen)
-        self.image = pg.transform.scale(StartScreen.img, game.size)
-        self.rect = self.image.get_rect()
+    def draw_polygon(self, points):
+        pg.draw.polygon(self.screen, 'white', points, 1)
 
 
 if __name__ == '__main__':
-    while True:
-        command = input()
-        if command == 'q':
-            break
-        MAP = load_level(command)
-        game = Game()
+    game = Game()
     sys.exit()
