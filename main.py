@@ -1,27 +1,21 @@
 import sys
 import pygame as pg
+import requests
 
 
-def read_points_from_file(file_path):
-    with open(file_path, 'r') as file:
-        points_str = file.read()
-    points_str = points_str.replace('(', '').replace(')', '')
-    points = [tuple(map(lambda x: float(x.replace(',', '.')), point.split(';'))) for point in points_str.split(', ')]
-    return points
-
-
-class Game:
+class Map:
     def __init__(self):
         pg.init()
-        pg.display.set_caption('Zoom')
-        self.size = self.width, self.height = 501, 501
+        pg.display.set_caption('Map')
+        self.size = self.width, self.height = 600, 450
         self.screen = pg.display.set_mode(self.size)
         self.display = pg.display
         self.screen.fill('black')
         self.fps = 100
+        self.x, self.y = 50, 50
+        self.z = 5
         self.clock = pg.time.Clock()
-        self.points = read_points_from_file('points.txt')
-        self.scale = 20
+        self.requests()
         self.run()
         pg.quit()
 
@@ -31,21 +25,35 @@ class Game:
             for event in pg.event.get():
                 if event.type == pg.QUIT or event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                     running = False
-                if event.type == pg.MOUSEBUTTONDOWN:
-                    if event.button == 4:  # Колесо вверх
-                        self.scale *= 1.1
-                    elif event.button == 5:  # Колесо вниз
-                        self.scale /= 1.1
-            self.screen.fill('black')
-            self.draw_polygon([(int(x * self.scale) + self.width // 2, int(-y * self.scale) + self.height // 2)
-                               for x, y in self.points])
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_PAGEDOWN and self.z > 0:
+                        self.z -= 1
+                        self.requests()
+                    if event.key == pg.K_PAGEUP and self.z < 22:
+                        self.z += 1
+                        self.requests()
+            self.draw()
             self.clock.tick(self.fps)
             self.display.flip()
 
-    def draw_polygon(self, points):
-        pg.draw.polygon(self.screen, 'white', points, 1)
+    def draw(self):
+        self.screen.blit(pg.image.load('map.png'), (0, 0))
+
+    def requests(self):
+        map_request = f"http://static-maps.yandex.ru/1.x/?ll={self.x},{self.y}&z={str(self.z)}&l=map"
+        response = requests.get(map_request)
+        if not response:
+            print("Ошибка выполнения запроса:")
+            print(map_request)
+            print("Http статус:", response.status_code, "(", response.reason, ")")
+            sys.exit(1)
+
+        # Запишем полученное изображение в файл.
+        map_file = "map.png"
+        with open(map_file, "wb") as file:
+            file.write(response.content)
 
 
 if __name__ == '__main__':
-    game = Game()
+    game = Map()
     sys.exit()
